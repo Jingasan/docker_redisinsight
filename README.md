@@ -6,7 +6,11 @@
 docker compose up -d
 ```
 
-手順２．ブラウザで「http://localhost:5540」を開く。
+手順２．ブラウザで以下URLを開く。
+
+```
+http://localhost:5540
+```
 
 手順３．以下のValkeyノードに対して接続する。
 
