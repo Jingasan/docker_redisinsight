@@ -1,0 +1,108 @@
+# Valkey ClusterとRedisInsightをDockerで構築する設定ファイル
+services:
+  # Valkeyノード１
+  valkey-nodes-1:
+    image: valkey/valkey:9.0.2
+    container_name: valkey-nodes-1
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey-nodes-data1:/var/lib/valkey
+    networks:
+      valkey-cluster:
+        ipv4_address: 192.168.4.101
+    command: >
+      sh -c "
+      valkey-server --port 6379 --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --protected-mode no
+      --dir /var/lib/valkey &&
+      tail -f /dev/null
+      "
+  # Valkeyノード２
+  valkey-nodes-2:
+    image: valkey/valkey:9.0.2
+    container_name: valkey-nodes-2
+    ports:
+      - "6380:6379"
+    volumes:
+      - valkey-nodes-data2:/var/lib/valkey
+    networks:
+      valkey-cluster:
+        ipv4_address: 192.168.4.102
+    command: >
+      sh -c "
+      valkey-server --port 6379 --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --protected-mode no
+      --dir /var/lib/valkey &&
+      tail -f /dev/null
+      "
+  # Valkeyノード３
+  valkey-nodes-3:
+    image: valkey/valkey:9.0.2
+    container_name: valkey-nodes-3
+    ports:
+      - "6381:6379"
+    volumes:
+      - valkey-nodes-data3:/var/lib/valkey
+    networks:
+      valkey-cluster:
+        ipv4_address: 192.168.4.103
+    command: >
+      sh -c "
+      valkey-server --port 6379 --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --protected-mode no
+      --dir /var/lib/valkey &&
+      tail -f /dev/null
+      "
+  # Valkeyクラスターの作成と管理
+  valkey-cluster:
+    image: valkey/valkey:9.0.2
+    container_name: valkey-cluster
+    depends_on:
+      - valkey-nodes-1
+      - valkey-nodes-2
+      - valkey-nodes-3
+    networks:
+      - valkey-cluster
+    entrypoint: >
+      sh -c "
+      sleep 10 &&
+      echo 'yes' | valkey-cli --cluster create \
+      192.168.4.101:6379 192.168.4.102:6379 192.168.4.103:6379 \
+      --cluster-replicas 0 &&
+      tail -f /dev/null
+      "
+
+  redisinsight:
+    image: redislabs/redisinsight:3.0.3
+    container_name: redisinsight
+    ports:
+      - 5540:5540
+    volumes:
+      - redisinsight-data:/db
+    networks:
+      - valkey-cluster
+    depends_on:
+      - valkey-cluster
+
+volumes:
+  valkey-nodes-data1:
+  valkey-nodes-data2:
+  valkey-nodes-data3:
+  redisinsight-data:
+
+networks:
+  valkey-cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.4.0/24
